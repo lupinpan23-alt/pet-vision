@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>宠物识别视频分析系统</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0f1117;
+      color: #e1e4e8;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1d2e 0%, #16213e 100%);
+      border-bottom: 1px solid #30363d;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo { font-size: 28px; }
+    header h1 { font-size: 22px; font-weight: 700; color: #58a6ff; letter-spacing: 0.5px; }
+    header p { font-size: 13px; color: #8b949e; margin-top: 2px; }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 800px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1c2128;
+    }
+    .card-header .icon { font-size: 18px; }
+    .card-header h2 { font-size: 15px; font-weight: 600; color: #c9d1d9; }
+
+    .card-body { padding: 20px; }
+
+    /* 表单 */
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 6px; }
+
+    input[type="text"], input[type="url"] {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 9px 12px;
+      color: #e1e4e8;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, input[type="url"]:focus {
+      outline: none;
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.1);
+    }
+
+    .upload-area {
+      border: 2px dashed #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #0d1117;
+    }
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: #58a6ff;
+      background: rgba(88,166,255,0.05);
+    }
+    .upload-area .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-area p { font-size: 13px; color: #8b949e; }
+    .upload-area .preview-img {
+      max-width: 100%;
+      max-height: 150px;
+      border-radius: 6px;
+      margin-top: 8px;
+      object-fit: contain;
+    }
+    #image-input { display: none; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #238636;
+      color: #fff;
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-primary:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+
+    .btn-blue {
+      background: #1f6feb;
+      color: #fff;
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-blue:hover { background: #388bfd; }
+    .btn-blue:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+
+    /* 宠物列表 */
+    .pet-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .pet-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .pet-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #21262d;
+      flex-shrink: 0;
+    }
+    .pet-avatar-placeholder {
+      width: 48px; height: 48px;
+      border-radius: 8px;
+      background: #21262d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .pet-name { font-size: 14px; font-weight: 600; color: #c9d1d9; }
+    .pet-empty { text-align: center; color: #8b949e; font-size: 13px; padding: 20px 0; }
+
+    /* 进度条 */
+    .progress-wrap {
+      background: #21262d;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+      margin: 10px 0 6px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #1f6feb, #58a6ff);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    .progress-text { font-size: 12px; color: #8b949e; }
+
+    /* 状态徽标 */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .badge-processing { background: rgba(31,111,235,0.2); color: #58a6ff; }
+    .badge-completed  { background: rgba(35,134,54,0.2);  color: #3fb950; }
+    .badge-failed     { background: rgba(248,81,73,0.2);  color: #f85149; }
+
+    /* 分析结果 */
+    .result-box {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 14px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #c9d1d9;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .result-box::-webkit-scrollbar { width: 6px; }
+    .result-box::-webkit-scrollbar-track { background: #0d1117; }
+    .result-box::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    .labels-wrap { margin-top: 12px; }
+    .labels-wrap h4 { font-size: 13px; color: #8b949e; margin-bottom: 8px; }
+    .label-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .label-chip {
+      background: rgba(35,134,54,0.15);
+      border: 1px solid rgba(35,134,54,0.4);
+      color: #3fb950;
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 13px;
+    }
+
+    .msg-box {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 10px;
+      font-size: 13px;
+      color: #8b949e;
+    }
+
+    .error-msg {
+      background: rgba(248,81,73,0.1);
+      border: 1px solid rgba(248,81,73,0.3);
+      color: #f85149;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .success-msg {
+      background: rgba(35,134,54,0.1);
+      border: 1px solid rgba(35,134,54,0.3);
+      color: #3fb950;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .divider { border: none; border-top: 1px solid #21262d; margin: 16px 0; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🐾</div>
+    <div>
+      <h1>宠物识别视频分析系统</h1>
+      <p>上传宠物照片，分析视频中出现的宠物</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 左栏：宠物管理 -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+      <!-- 添加宠物 -->
+      <div class="card">
+        <div class="card-header">
+          <span class="icon">➕</span>
+          <h2>添加宠物</h2>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>宠物名字</label>
+            <input type="text" id="pet-name" placeholder="例如：小橘、旺财" />
+          </div>
+          <div class="form-group">
+            <label>宠物图片</label>
+            <div class="upload-area" id="upload-area" onclick="document.getElementById('image-input').click()">
+              <div class="upload-icon">📷</div>
+              <p>点击或拖拽上传图片</p>
+              <p style="font-size:12px;margin-top:4px;">支持 JPG / PNG</p>
+            </div>
+            <input type="file" id="image-input" accept="image/*" />
+          </div>
+          <div id="add-pet-msg"></div>
+          <button class="btn btn-primary" id="add-pet-btn" onclick="addPet()">添加宠物</button>
+        </div>
+      </div>
+
+      <!-- 宠物列表 -->
+      <div class="card">
+        <div class="card-header">
+          <span class="icon">🐱</span>
+          <h2>已添加宠物</h2>
+        </div>
+        <div class="card-body">
+          <div class="pet-list" id="pet-list">
+            <div class="pet-empty">暂无宠物，请先添加</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 右栏：视频分析 -->
+    <div class="card" style="align-self: start;">
+      <div class="card-header">
+        <span class="icon">🎬</span>
+        <h2>视频分析</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>视频 URL（公网可访问）</label>
+          <input type="url" id="video-url" placeholder="https://example.com/video.mp4" />
+        </div>
+        <div id="analyze-msg"></div>
+        <button class="btn btn-blue" id="analyze-btn" onclick="startAnalyze()">开始分析</button>
+
+        <hr class="divider" />
+
+        <!-- 进度区域 -->
+        <div id="progress-section" style="display:none;">
+          <div class="status-row">
+            <span style="font-size:14px;font-weight:600;color:#c9d1d9;">分析进度</span>
+            <span id="status-badge" class="badge badge-processing">处理中</span>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+          </div>
+          <div class="progress-text" id="progress-percent">0%</div>
+          <div class="msg-box" id="progress-msg">准备中...</div>
+
+          <!-- 识别标签 -->
+          <div class="labels-wrap" id="labels-section" style="display:none;">
+            <h4>识别到的宠物</h4>
+            <div class="label-chips" id="label-chips"></div>
+          </div>
+
+          <!-- 分析结果 -->
+          <div id="result-section" style="display:none;">
+            <h4 style="font-size:13px;color:#8b949e;margin-top:14px;margin-bottom:8px;">视频分析结果</h4>
+            <div class="result-box" id="result-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    let pollingTimer = null;
+
+    // 拖拽上传
+    const uploadArea = document.getElementById('upload-area');
+    const imageInput = document.getElementById('image-input');
+
+    uploadArea.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadArea.classList.add('drag-over');
+    });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) setImageFile(file);
+    });
+    imageInput.addEventListener('change', () => {
+      if (imageInput.files[0]) setImageFile(imageInput.files[0]);
+    });
+
+    function setImageFile(file) {
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        uploadArea.innerHTML = `<img class="preview-img" src="${e.target.result}" alt="预览" />`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showMsg(containerId, msg, type) {
+      const el = document.getElementById(containerId);
+      el.innerHTML = `<div class="${type}-msg">${msg}</div>`;
+    }
+
+    async function addPet() {
+      const name = document.getElementById('pet-name').value.trim();
+      if (!name) { showMsg('add-pet-msg', '请输入宠物名字', 'error'); return; }
+      if (!selectedFile) { showMsg('add-pet-msg', '请选择宠物图片', 'error'); return; }
+
+      const btn = document.getElementById('add-pet-btn');
+      btn.disabled = true;
+      btn.textContent = '添加中...';
+
+      const fd = new FormData();
+      fd.append('name', name);
+      fd.append('image', selectedFile);
+
+      try {
+        const resp = await fetch('/api/pets', { method: 'POST', body: fd });
+        const data = await resp.json();
+        if (!resp.ok) { showMsg('add-pet-msg', data.error || '添加失败', 'error'); return; }
+        showMsg('add-pet-msg', `宠物「${data.name}」添加成功！`, 'success');
+        document.getElementById('pet-name').value = '';
+        selectedFile = null;
+        uploadArea.innerHTML = `<div class="upload-icon">📷</div><p>点击或拖拽上传图片</p><p style="font-size:12px;margin-top:4px;">支持 JPG / PNG</p>`;
+        loadPets();
+      } catch (e) {
+        showMsg('add-pet-msg', '网络错误：' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '添加宠物';
+      }
+    }
+
+    async function loadPets() {
+      try {
+        const resp = await fetch('/api/pets');
+        const pets = await resp.json();
+        const list = document.getElementById('pet-list');
+        if (!pets.length) {
+          list.innerHTML = '<div class="pet-empty">暂无宠物，请先添加</div>';
+          return;
+        }
+        list.innerHTML = pets.map(p => `
+          <div class="pet-item">
+            <div class="pet-avatar-placeholder">🐾</div>
+            <div>
+              <div class="pet-name">${escapeHtml(p.name)}</div>
+              <div style="font-size:12px;color:#8b949e;margin-top:2px;">${escapeHtml(p.image_filename || '')}</div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('加载宠物失败', e);
+      }
+    }
+
+    async function startAnalyze() {
+      const url = document.getElementById('video-url').value.trim();
+      if (!url) { showMsg('analyze-msg', '请输入视频URL', 'error'); return; }
+
+      const btn = document.getElementById('analyze-btn');
+      btn.disabled = true;
+      btn.textContent = '分析中...';
+      document.getElementById('analyze-msg').innerHTML = '';
+
+      // 重置进度区域
+      const sec = document.getElementById('progress-section');
+      sec.style.display = 'block';
+      setProgress(0, '任务已创建，准备开始...', 'processing');
+      document.getElementById('labels-section').style.display = 'none';
+      document.getElementById('result-section').style.display = 'none';
+
+      try {
+        const resp = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ video_url: url }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          showMsg('analyze-msg', data.error || '启动失败', 'error');
+          btn.disabled = false;
+          btn.textContent = '开始分析';
+          return;
+        }
+        pollTask(data.task_id, btn);
+      } catch (e) {
+        showMsg('analyze-msg', '网络错误：' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '开始分析';
+      }
+    }
+
+    function pollTask(taskId, btn) {
+      if (pollingTimer) clearInterval(pollingTimer);
+      pollingTimer = setInterval(async () => {
+        try {
+          const resp = await fetch(`/api/task/${taskId}`);
+          const task = await resp.json();
+
+          setProgress(task.progress, task.message, task.status);
+
+          if (task.status === 'completed') {
+            clearInterval(pollingTimer);
+            btn.disabled = false;
+            btn.textContent = '开始分析';
+            showResult(task.result);
+          } else if (task.status === 'failed') {
+            clearInterval(pollingTimer);
+            btn.disabled = false;
+            btn.textContent = '开始分析';
+            showMsg('analyze-msg', task.message, 'error');
+          }
+        } catch (e) {
+          console.error('轮询失败', e);
+        }
+      }, 2000);
+    }
+
+    function setProgress(pct, msg, status) {
+      document.getElementById('progress-bar').style.width = pct + '%';
+      document.getElementById('progress-percent').textContent = pct + '%';
+      document.getElementById('progress-msg').textContent = msg;
+
+      const badge = document.getElementById('status-badge');
+      const map = {
+        processing: ['badge-processing', '处理中'],
+        completed:  ['badge-completed',  '已完成'],
+        failed:     ['badge-failed',     '失败'],
+      };
+      const [cls, text] = map[status] || ['badge-processing', '处理中'];
+      badge.className = 'badge ' + cls;
+      badge.textContent = text;
+    }
+
+    function showResult(result) {
+      if (!result) return;
+
+      // 显示名字标签
+      const labels = result.name_labels || [];
+      if (labels.length) {
+        const sec = document.getElementById('labels-section');
+        sec.style.display = 'block';
+        const chips = document.getElementById('label-chips');
+        chips.innerHTML = labels.map(l => {
+          const m = String(Math.floor(l.timestamp / 60)).padStart(2, '0');
+          const s = String(l.timestamp % 60).padStart(2, '0');
+          return `<span class="label-chip">${escapeHtml(l.name)} @ ${m}:${s}</span>`;
+        }).join('');
+      }
+
+      // 显示分析文本
+      const resSec = document.getElementById('result-section');
+      resSec.style.display = 'block';
+      document.getElementById('result-text').textContent = result.analysis || '（无分析结果）';
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // 初始加载宠物
+    loadPets();
+  </script>
+</body>
+</html>
